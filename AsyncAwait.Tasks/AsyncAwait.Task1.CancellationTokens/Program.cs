@@ -8,6 +8,8 @@
 */
 
 using System;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace AsyncAwait.Task1.CancellationTokens;
 
@@ -40,22 +42,54 @@ internal class Program
             }
 
             input = Console.ReadLine();
+
         }
 
         Console.WriteLine("Press any key to continue");
         Console.ReadLine();
     }
 
-    private static void CalculateSum(int n)
+    private static async Task CalculateSum(int n)
     {
-        // todo: make calculation asynchronous
-        var sum = Calculator.Calculate(n);
-        Console.WriteLine($"Sum for {n} = {sum}.");
-        Console.WriteLine();
-        Console.WriteLine("Enter N: ");
-        // todo: add code to process cancellation and uncomment this line    
-        // Console.WriteLine($"Sum for {n} cancelled...");
+        CancellationTokenSource cancelTokenSource = new CancellationTokenSource();
+        CancellationToken token = cancelTokenSource.Token;
 
+        // todo: make calculation asynchronous
+        Task task = new Task(async () =>
+        {
+            try
+            {
+                var sum = await Calculator.CalculateAsync(n, token);
+                Console.WriteLine($"Sum for {n} = {sum}.");
+            }
+            catch (TaskCanceledException ae)
+            {
+                Console.WriteLine("Operation is canceled");
+            }
+            finally
+            {
+                cancelTokenSource.Dispose();
+            }
+
+        }, token);
+
+        task.Start();
         Console.WriteLine($"The task for {n} started... Enter N to cancel the request:");
+        Console.WriteLine();
+        var n_cancel_input = Console.ReadLine();
+        if (int.TryParse(n_cancel_input, out var n_cancel))
+        {
+            if (n_cancel == n)
+            {
+                cancelTokenSource.Cancel();
+                Console.WriteLine($"Sum for {n} cancelled...");
+                Console.WriteLine("Enter N: ");
+            }
+            else
+            {
+                Console.WriteLine("Enter N: ");
+            }
+        }
+
     }
 }
